@@ -9,8 +9,8 @@ ssc.checkpoint("checkpoint")
 
 
 def print_top_list(rdd):
-  for (count, word) in rdd.take(10):
-    print("%s: %i" % (word, count))
+  for (val, key) in rdd.take(10):
+    print("%s: %i" % (key, val))
 
 def updateFunc(new, last):
   new_sum = 0
@@ -32,12 +32,12 @@ kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line)
 
+# From http://abshinn.github.io/python/apache-spark/2014/10/11/using-combinebykey-in-apache-spark/
 running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))).updateStateByKey(updateFunc)
-#data.pprint()
-running_sumcount.pprint()
+#running_sumcount.pprint()
 
-#top = running_counts.map(lambda x: (x[1],x[0])).transform(lambda rdd: rdd.sortByKey(False))
-#top.foreachRDD(print_top_list)
+rank = running_sumcount.map(lambda (carrier, (total, count)): (total / count, carrier)).transform(lambda rdd: rdd.sortByKey())
+rank.foreachRDD(print_top_list)
 
 ssc.start()             # Start the computation
 ssc.awaitTermination()  # Wait for the computation to terminate
