@@ -37,8 +37,12 @@ data = lines.map(parse_line).map(lambda x: ("%s:%s" % x[0:2], x[2]))
 running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))).updateStateByKey(updateFunc)
 #running_sumcount.pprint()
 
-averages = running_sumcount.map(lambda (key, (total, count)): (total / count, key)).map(lambda (avg, key): (key.split(':')[1], [(key.split(':')[0], avg)])).reduceByKey(lambda x, y: x+y)
-averages.pprint()
+averages = running_sumcount.map(lambda (key, (total, count)): (total / count, key)).map(lambda (avg, key): (key.split(':')[1], [(avg, key.split(':')[0])])).reduceByKey(lambda x, y: x+y)
+#averages.pprint()
+
+# https://wiki.python.org/moin/HowTo/Sorting
+rank = averages.map(lambda (apt, carriers): (apt, sorted(carriers, key=itemgetter(0))))
+rank.pprint()
 #.transform(lambda rdd: rdd.sortByKey())
 #rank.foreachRDD(print_top_list)
 
