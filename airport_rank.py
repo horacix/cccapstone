@@ -10,7 +10,9 @@ ssc.checkpoint("checkpoint")
 kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
 
 def print_top_list(rdd):
-  print '[%s]' % ', '.join(map(str, rdd.take(10)))
+  for (count, word) in rdd.take(10):
+    print("%s: %i" % (word, count))
+#  print '[%s]' % ', '.join(map(str, rdd.take(10)))
 
 def updateFunc(new_values, last_sum):
   return sum(new_values) + (last_sum or 0)
