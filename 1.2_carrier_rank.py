@@ -32,8 +32,8 @@ kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line)
 
-running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))) #.updateStateByKey(updateFunc)
-data.pprint()
+running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))).updateStateByKey(updateFunc)
+#data.pprint()
 running_sumcount.pprint()
 
 #top = running_counts.map(lambda x: (x[1],x[0])).transform(lambda rdd: rdd.sortByKey(False))
