@@ -33,12 +33,11 @@ kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "
 
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line).map(lambda x: ("%s:%s" % x[0:2], x[2]))
-data.pprint()
 # From http://abshinn.github.io/python/apache-spark/2014/10/11/using-combinebykey-in-apache-spark/
 running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))).updateStateByKey(updateFunc)
 #running_sumcount.pprint()
 
-averages = running_sumcount.map(lambda (key, (total, count)): (total / count, key))
+averages = running_sumcount.map(lambda (key, (total, count)): (total / count, key)).map(lambda (avg, key): (key.split(':')[1], [(key.split(':')[0], avg)])).reduceByKey(lambda x, y: x+y)
 averages.pprint()
 #.transform(lambda rdd: rdd.sortByKey())
 #rank.foreachRDD(print_top_list)
