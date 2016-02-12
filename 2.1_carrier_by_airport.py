@@ -41,7 +41,7 @@ averages = running_sumcount.map(lambda (key, (total, count)): (total / count, ke
 #averages.pprint()
 
 # https://wiki.python.org/moin/HowTo/Sorting
-rank = averages.map(lambda (apt, carriers): (apt, sorted(carriers, key=itemgetter(0))))
+rank = averages.map(lambda (apt, carriers): (apt, map(lambda x: x[1], sorted(carriers, key=itemgetter(0))[0:10])))
 rank.pprint()
 #.transform(lambda rdd: rdd.sortByKey())
 #rank.foreachRDD(print_top_list)
