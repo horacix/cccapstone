@@ -2,17 +2,22 @@ from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kafka import KafkaUtils
 from operator import itemgetter
-from datetime import datetime
+from cassandra.cluster import Cluster
+from cassandra.query import BatchStatement
 
 sc = SparkContext(appName="CarrierRank")
 ssc = StreamingContext(sc, 10)
 ssc.checkpoint("checkpoint")
 
-
-def print_top_list(rdd):
-  print(datetime.now())
-  for (val, key) in rdd.take(10):
-    print("%s: %i" % (key, val))
+def sendPartition(iter):
+  cluster = Cluster(['hdp-master','hdp-slave1','hdp-slave2','hdp-slave3'])
+  session = cluster.connect('coursera')
+  insert = session.prepare("INSERT INTO carrier_rank_by_airport (airport, carrier_rank) VALUES (?, ?)")
+  batch = BatchStatement()
+  for record in iter:
+    batch.add(insert, record)
+  session.execute(batch)
+  cluster.shutdown()  
 
 def updateFunc(new, last):
   new_sum = 0
@@ -43,8 +48,9 @@ averages = running_sumcount.map(lambda (key, (total, count)): (total / count, ke
 # https://wiki.python.org/moin/HowTo/Sorting
 rank = averages.map(lambda (apt, carriers): (apt, map(lambda x: x[1], sorted(carriers, key=itemgetter(0))[0:10])))
 rank.pprint()
-#.transform(lambda rdd: rdd.sortByKey())
-#rank.foreachRDD(print_top_list)
+
+# sent to Cassandra
+rank.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
 
 ssc.start()             # Start the computation
 ssc.awaitTermination()  # Wait for the computation to terminate
