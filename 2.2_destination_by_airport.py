@@ -47,7 +47,7 @@ averages = running_sumcount.map(lambda (key, (total, count)): (total / count, ke
 
 # https://wiki.python.org/moin/HowTo/Sorting
 rank = averages.map(lambda (apt, dests): (apt, map(lambda x: x[1], sorted(dests, key=itemgetter(0))[0:10])))
-rank.pprint()
+#rank.pprint()
 
 # sent to Cassandra
 rank.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
