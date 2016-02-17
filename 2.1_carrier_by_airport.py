@@ -34,7 +34,9 @@ def parse_line(line):
   vals = itemgetter(2,4,7)(line.split(","))
   return (vals[0], vals[1], float(vals[2]))
 
-kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
+numStreams = 8
+kafkaStreams = [KafkaUtils.createStream(ssc, 'hdp-slave2:2181', "spark-streaming-consumer", {'flights': 1}) for _ in range (numStreams)]
+kvs = ssc.union(*kafkaStreams)
 
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line).map(lambda x: ("%s:%s" % x[0:2], x[2]))
@@ -47,7 +49,7 @@ averages = running_sumcount.map(lambda (key, (total, count)): (total / count, ke
 
 # https://wiki.python.org/moin/HowTo/Sorting
 rank = averages.map(lambda (apt, carriers): (apt, map(lambda x: x[1], sorted(carriers, key=itemgetter(0))[0:10])))
-rank.pprint()
+#rank.pprint()
 
 # sent to Cassandra
 rank.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
