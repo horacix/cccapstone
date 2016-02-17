@@ -6,7 +6,7 @@ from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
 
 sc = SparkContext(appName="ArrivalDelayAverages")
-ssc = StreamingContext(sc, 10)
+ssc = StreamingContext(sc, 30)
 ssc.checkpoint("checkpoint")
 
 def sendPartition(iter):
@@ -34,21 +34,20 @@ def parse_line(line):
   vals = itemgetter(4,5,9)(line.split(","))
   return ("%s:%s" % (vals[0], vals[1]), float(vals[2]))
 
-kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
+kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"}).repartition(60)
 
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
-data = lines.map(parse_line).repartition(64).cache()
+data = lines.map(parse_line).cache()
 # From http://abshinn.github.io/python/apache-spark/2014/10/11/using-combinebykey-in-apache-spark/
 summ = data.reduceByKey(lambda x, y: x + y)
 count = data.map(lambda (x, y): (x, 1)).reduceByKey(lambda x, y: x + y)
 running_sumcount = summ.join(count).updateStateByKey(updateFunc)
-#running_sumcount = data.transform(lambda rdd: rdd.combineByKey(lambda value: (value, 1), lambda x, value: (x[0] + value, x[1] + 1), lambda x, y: (x[0] + y[0], x[1] + y[1]))).updateStateByKey(updateFunc)
 #running_sumcount.pprint()
 
-averages = running_sumcount.map(lambda (key, (total, count)): tuple(key.split(':') + [total / count]))
-averages.pprint()
+averages = running_sumcount.map(lambda (key, (total, count)): tuple(key.split(':') + ['%.4f' % (total / count)]))
+#averages.pprint()
 # sent to Cassandra
-#averages.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
+averages.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
 
 ssc.start()             # Start the computation
 ssc.awaitTermination()  # Wait for the computation to terminate
