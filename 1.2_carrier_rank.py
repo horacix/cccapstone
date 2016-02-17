@@ -9,8 +9,9 @@ ssc.checkpoint("checkpoint")
 
 
 def print_top_list(rdd):
+  print ("======")
   for (val, key) in rdd.take(10):
-    print("%s: %i" % (key, val))
+    print("%s: %f" % (key, val))
 
 def updateFunc(new, last):
   new_sum = 0
@@ -27,7 +28,9 @@ def parse_line(line):
   vals = itemgetter(2,9)(line.split(","))
   return (vals[0], float(vals[1]))
 
-kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
+numStreams = 8
+kafkaStreams = [KafkaUtils.createStream(ssc, 'hdp-slave1:2181', "spark-streaming-consumer", {'flights': 1}) for _ in range (numStreams)]
+kvs = ssc.union(*kafkaStreams)
 
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line)
