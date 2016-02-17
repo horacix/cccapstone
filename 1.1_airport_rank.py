@@ -7,9 +7,13 @@ ssc = StreamingContext(sc, 10)
 ssc.checkpoint("checkpoint")
 
 #lines = ssc.textFileStream("/user/otp")
-kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
+#kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
+numStreams = 8
+kafkaStreams = [KafkaUtils.createStream(ssc, 'hdp-slave2:2181', "spark-streaming-consumer", {'flights': 1}) for _ in range (numStreams)]
+kvs = ssc.union(*kafkaStreams)
 
 def print_top_list(rdd):
+  print ("======")
   for (count, word) in rdd.take(10):
     print("%s: %i" % (word, count))
 
