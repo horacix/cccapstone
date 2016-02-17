@@ -4,6 +4,7 @@ from pyspark.streaming.kafka import KafkaUtils
 from operator import itemgetter
 from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
+from decimal import Decimal
 
 sc = SparkContext(appName="ArrivalDelayAverages")
 ssc = StreamingContext(sc, 30)
@@ -45,7 +46,7 @@ count = data.map(lambda (x, y): (x, 1)).reduceByKey(lambda x, y: x + y)
 running_sumcount = summ.join(count).updateStateByKey(updateFunc)
 #running_sumcount.pprint()
 
-averages = running_sumcount.map(lambda (key, (total, count)): tuple(key.split(':') + ['%.4f' % (total / count)]))
+averages = running_sumcount.map(lambda (key, (total, count)): tuple(key.split(':') + [Decimal('%.4f' % (total / count))]))
 #averages.pprint()
 # sent to Cassandra
 averages.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
