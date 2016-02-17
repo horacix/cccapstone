@@ -34,11 +34,12 @@ def parse_line(line):
   vals = itemgetter(4,5,9)(line.split(","))
   return ("%s:%s" % (vals[0], vals[1]), float(vals[2]))
 
-kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"}).repartition(60)
+numStreams = 8
+kafkaStreams = [KafkaUtils.createStream(ssc, 'hdp-slave2:2181', "spark-streaming-consumer", {'flights': 1}) for _ in range (numStreams)]
+kvs = ssc.union(*kafkaStreams)
 
 lines = kvs.map(lambda x: x[1]).filter(lambda x: x.find('false') < 0)
 data = lines.map(parse_line).cache()
-# From http://abshinn.github.io/python/apache-spark/2014/10/11/using-combinebykey-in-apache-spark/
 summ = data.reduceByKey(lambda x, y: x + y)
 count = data.map(lambda (x, y): (x, 1)).reduceByKey(lambda x, y: x + y)
 running_sumcount = summ.join(count).updateStateByKey(updateFunc)
