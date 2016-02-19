@@ -8,7 +8,7 @@ ssc.checkpoint("checkpoint")
 
 #lines = ssc.textFileStream("/user/otp")
 #kvs = KafkaUtils.createDirectStream(ssc, ["flights"], {"metadata.broker.list": "hdp-master:9092"})
-numStreams = 8
+numStreams = 4
 kafkaStreams = [KafkaUtils.createStream(ssc, 'hdp-slave2:2181', "spark-streaming-consumer", {'flights': 1}) for _ in range (numStreams)]
 kvs = ssc.union(*kafkaStreams)
 
